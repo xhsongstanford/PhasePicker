@@ -46,7 +46,7 @@ def window_length_relation(t, win_min, win_max, rate):
         return min(win_min + (t - win_min) * rate, win_max) # rate should be smaller than 1
 
 
-def SNR_Fine(tr_data, dt, nss_win = 10, sgn_win = 2, adj_nss_win = False, nss_win_min = 7, nss_win_max = 15, rate_nss = 0.2, adj_sgn_win = False, sgn_win_min = 3, sgn_win_max = 6, rate_sgn = 0.1, NET='XZ'):
+def SNR_Fine(tr_data, dt, nss_win = 10, sgn_win = 2, adj_nss_win = False, nss_win_min = 7, nss_win_max = 25, rate_nss = 0.4, adj_sgn_win = False, sgn_win_min = 3, sgn_win_max = 6, rate_sgn = 0.1, NET='XZ'):
 
     Empty_warning = False
 
@@ -74,10 +74,9 @@ def SNR_Fine(tr_data, dt, nss_win = 10, sgn_win = 2, adj_nss_win = False, nss_wi
         sgn = tr_data[idx : idx + sgn_len]
         Noise = np.sum(nss**2 * np.linspace(0.5, 1.0, len(nss)) )
         Signal = np.sum(sgn**2 * np.linspace(1.0, 0.5, len(sgn)) )
-        #sgn = sgn * np.append(np.linspace(0.5, 1.0, int(0.2*len(sgn))), np.linspace(1.0, 0.5, len(sgn) - int(0.2*len(sgn)) ))
-        #Noise = np.sum(nss**2)
+
         if NET == 'AM':
-            epsilon = 2e-8
+            epsilon = 0.5e-8
         if np.sqrt(Noise) <= epsilon or np.sqrt(Signal) <= 2 * epsilon:
             snr[idx] = 0
             Empty_warning = True
@@ -148,11 +147,8 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
             Warning3.append(Empty_warning)
 
         Empty_warning = np.bool_(np.sum(Warning3))
-        #print(snr_p_data)
-
+ 
         snr_p_avg = merge_snr(snr_p).data
-
-        #snr_p_avg = snr_p_data
 
         i_p = -1
 
@@ -222,8 +218,6 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
                         p_nois_z.pop()
                     
 
-    #print('finish p')
-
     s_picks = []
     s_snrs = []
     s_ampls_z = []
@@ -243,7 +237,7 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
         if p_warning[k] == True:
             continue
 
-        i_start = int(round((p_pick +   0)/dt_fine))
+        i_start = int(round((p_pick +   7)/dt_fine))
         i_end   = int(round((p_pick + 110)/dt_fine))
         time_start = i_start * dt_fine
 
@@ -282,10 +276,6 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
             if len(s_snr) >= 3:
                 break
 
-        # i_s = [np.argmax(snr_s_avg)]
-        # s_snr = [snr_s_avg[i_s[-1]]]
-        # if s_snr[-1] < threshold_s:
-        #     continue
         
         if i_s != []:
             for j in range(len(i_s)):
@@ -361,8 +351,6 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
             s_snrs += s_snr
         
 
-    #print('finish s')
-
     r_picks = np.array(rough_picks)
     s_picks = np.array(s_picks)
     p_picks = np.array(p_picks)
@@ -395,6 +383,10 @@ def get_rough_tr_square(tr_data, dt, new_dt):
 def merge_snr(snr_stream):
 
     snr_stream_avg = snr_stream[0].copy()
+    for tr in snr_stream:
+        if tr.meta.channel[-1] == 'Z':
+            snr_stream_avg = tr.copy()
+            break
 
     if len(snr_stream) == 2:
         snr_stream_avg.data = np.max(np.array([snr_stream[0].data, snr_stream[1].data]), axis=0)
@@ -405,7 +397,7 @@ def merge_snr(snr_stream):
             if num_nzeros == 1:
                 snr_stream_avg.data[i] = max(snr_stream[0].data[i], snr_stream[1].data[i], snr_stream[2].data[i])
             elif num_nzeros >= 2:
-                snr_stream_avg.data[i] = (snr_stream[0].data[i] + snr_stream[1].data[i] + snr_stream[2].data[i] - min(snr_stream[0].data[i], snr_stream[1].data[i], snr_stream[2].data[i])) / 1.9
+                snr_stream_avg.data[i] = max(snr_stream_avg.data[i], (snr_stream[0].data[i] + snr_stream[1].data[i] + snr_stream[2].data[i] - min(snr_stream[0].data[i], snr_stream[1].data[i], snr_stream[2].data[i])) / 1.9 )
     
     return snr_stream_avg
 
@@ -427,7 +419,6 @@ def collapse_phases(picks_df, threshold):
 
 
 def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3), amp_freq_band=(0.5, 2), wfBaseDir = 'Picks'):
-
 
     st_high = st.copy()
     st_low = st.copy()
@@ -452,9 +443,9 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
 
     csv_filename = Dir_path + '.'.join([net, sta, str(crr_date.strftime(format='%Y%m%d')), 'csv'])
 
-    # if os.path.exists(csv_filename):
-    #     print(f'file {csv_filename} already exists')
-    #     return
+    #if os.path.exists(csv_filename):
+    #    print(f'file {csv_filename} already exists')
+    #    return
 
     earliest = UTCDateTime('2050-01-01')
     latest = UTCDateTime('1970-01-01')
@@ -476,7 +467,7 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
 
     snr_rough_avg = merge_snr(snr_rough)
 
-    rough_picks = pick_rough_picks(snr_rough_avg.data, rough_dt, 3.0)
+    rough_picks = pick_rough_picks(snr_rough_avg.data, rough_dt, 2.6)
 
     (r_picks, p_picks, s_picks, p_snrs, s_snrs, 
      p_ampls_z, p_ampls_n, p_ampls_e, 
@@ -485,7 +476,7 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
      s_ampls_z, s_ampls_n, s_ampls_e, 
      s_nois_z, s_nois_n, s_nois_e, 
      s_rms_z, s_rms_n, s_rms_e, 
-     p_warning, s_warning, sp_ratio)= pick_fine_picks(rough_picks, st_high, st_low, st_amp, 2.8, 2.9)
+     p_warning, s_warning, sp_ratio)= pick_fine_picks(rough_picks, st_high, st_low, st_amp, 2.9, 3.0)
 
     pick_data = {
         'station':[],
@@ -557,11 +548,8 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
     df_s = collapse_phases(df_s, 3)
     df = pd.concat([df_p, df_s], axis=0, ignore_index=True)
 
-    #df = df.sort_values(by='time')
-    
     df.to_csv(csv_filename, index=False)
-
 
     print(f'saved file {csv_filename} with STA-LTA picked {len(df)} phases')
 
-    #return snr_rough_avg, df
+    return #snr_rough_avg, df

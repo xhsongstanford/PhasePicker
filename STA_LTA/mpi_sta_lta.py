@@ -24,18 +24,18 @@ size = comm.Get_size()
 Dir = '../WF_CORR'
 
 
-
-def process_single_day(curr_date):
+def process_single_day(curr_date, SaveDir):
 
     print('===========  processing date ' + str(curr_date.date) + ' ================================')
-    #crr_date = UTCDateTime('2023-11-27')
+
     for net in nets:
         filepath = os.path.join(Dir, str(curr_date.year), str(curr_date.month), net)
         station_paths = glob(filepath + '/*')
         for station_path in station_paths:
             sta = station_path.split('/')[-1]
 
-            # if sta != 'REDBD' and sta != 'ZHF':
+
+            # if sta != 'REDBD':
             #     continue
 
             #print('process station ' + station_path)
@@ -48,10 +48,12 @@ def process_single_day(curr_date):
             #stream.trim(curr_date, curr_date + 24*3600, pad=True, fill_value=0)
             if stream[0].meta.delta < 0.05:
                 stream.resample(20, window=None)
-            # else:
-            #     stream.resample(10)
-                
-            process_one_stream(stream, 1, (0.5, 5), (0.3, 3), (0.5, 2), wfBaseDir='Picks')
+
+
+            if net == 'AM':
+                process_one_stream(stream, 1, (1, 10), (1, 10), (0.5, 2), wfBaseDir= SaveDir)
+            else:
+                process_one_stream(stream, 1, (0.5, 5), (0.3, 5), (0.5, 2), wfBaseDir= SaveDir)
     
     # curr_date += 24*3600
     return
@@ -62,6 +64,8 @@ if __name__ == '__main__':
     nets = sys.argv[1].split(',')
     startdate = UTCDateTime(sys.argv[2])
     enddate = UTCDateTime(sys.argv[3])
+
+    SaveDir = 'Picks'
     
     # Generate list of all dates to process
     all_dates = []
@@ -81,7 +85,7 @@ if __name__ == '__main__':
     
     # Process assigned dates
     for date in my_dates:
-        process_single_day(date)
+        process_single_day(date, SaveDir)
     
     # Wait for all processes to finish
     comm.Barrier()

@@ -111,7 +111,7 @@ def pick_rough_picks(snr_rough, dt_rough, threshold_rough=3,):
     return rough_picks
 
 
-def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, threshold_s=2.5,):
+def pick_fine_picks(rough_picks, st_high, st_low, st_amp, st_disp, threshold_p=3, threshold_s=2.5,):
 
     dt_fine = st_high[0].meta.delta
 
@@ -120,14 +120,17 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
     p_ampls_z = []
     p_ampls_n = []
     p_ampls_e = []
+    p_ampdis_z = []
+    p_ampdis_n = []
+    p_ampdis_e = []
 
     p_nois_z = []
     p_nois_n = []
     p_nois_e = []
 
-    p_rms_z = []
-    p_rms_n = []
-    p_rms_e = []
+    p_amprms_z = []
+    p_amprms_n = []
+    p_amprms_e = []
 
     p_warning = []
     for rough_pick in rough_picks:
@@ -170,49 +173,63 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
             findz = 0
             findn = 0
             finde = 0
-            for tr in st_amp:
+            for tr_i in range(len(st_amp)):
+                tr = st_amp[tr_i]
+                tr_disp = st_disp[tr_i]
                 if tr.meta.channel[-1] == 'Z':
                     p_ampls_z.append( np.max(np.abs(tr.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
+                    p_ampdis_z.append( np.max(np.abs(tr_disp.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
                     p_nois_z.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(5/dt_fine): i_start+i_p-int(1/dt_fine)] ** 2)/(4/dt_fine)) )
-                    p_rms_z.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(0/dt_fine): i_start+i_p-int(4/dt_fine)] ** 2)/(4/dt_fine)) )
+                    p_amprms_z.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(0/dt_fine): i_start+i_p+int(4/dt_fine)] ** 2)/(4/dt_fine)) )
                     findz = 1
                 elif tr.meta.channel[-1] in ['N' , '1'] :
                     p_ampls_n.append( np.max(np.abs(tr.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
+                    p_ampdis_n.append( np.max(np.abs(tr_disp.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
                     p_nois_n.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(5/dt_fine): i_start+i_p-int(1/dt_fine)] ** 2)/(4/dt_fine)) )
-                    p_rms_n.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(5/dt_fine): i_start+i_p-int(4/dt_fine)] ** 2)/(4/dt_fine)) )
+                    p_amprms_n.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(0/dt_fine): i_start+i_p+int(4/dt_fine)] ** 2)/(4/dt_fine)) )
                     findn = 1
                 elif tr.meta.channel[-1] in ['E' , '2']:
                     p_ampls_e.append( np.max(np.abs(tr.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
+                    p_ampdis_e.append( np.max(np.abs(tr_disp.data[i_start+i_p-int(1/dt_fine): i_start+i_p+int(5/dt_fine)])) )
                     p_nois_e.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(5/dt_fine): i_start+i_p-int(1/dt_fine)] ** 2)/(4/dt_fine)) )
-                    p_rms_e.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(0/dt_fine): i_start+i_p-int(4/dt_fine)] ** 2)/(4/dt_fine)) )
+                    p_amprms_e.append( np.sqrt(np.sum(tr.data[i_start+i_p-int(0/dt_fine): i_start+i_p+int(4/dt_fine)] ** 2)/(4/dt_fine)) )
                     finde = 1
             if not findz:
                 p_ampls_z.append(0)
+                p_ampdis_z.append(0)
                 p_nois_z.append(0)
-                p_rms_z.append(0)
+                p_amprms_z.append(0)
             if not findn:
                 p_ampls_n.append(0)
+                p_ampdis_n.append(0)
                 p_nois_n.append(0)
-                p_rms_n.append(0)
+                p_amprms_n.append(0)
             if not finde:
                 p_ampls_e.append(0)
+                p_ampdis_e.append(0)
                 p_nois_e.append(0)
-                p_rms_e.append(0)
+                p_amprms_e.append(0)
             
             if len(p_picks) >= 2:
                 if p_picks[-1] - p_picks[-2] < 100:
-                    old_p_amps = [p_rms_z[-2], p_rms_n[-2], p_rms_e[-2]]
+                    old_p_amps = [p_amprms_z[-2], p_amprms_n[-2], p_amprms_e[-2]]
                     # old_p_nois = [p_nois_z[-2], p_nois_n[-2], p_nois_e[-2]]
-                    # new_p_amps = [p_rms_z[-1], p_rms_n[-1], p_rms_e[-1]]
+                    # new_p_amps = [p_amprms_z[-1], p_amprms_n[-1], p_amprms_e[-1]]
                     new_p_nois = [p_nois_z[-1], p_nois_n[-1], p_nois_e[-1]]
-                    i_chn = np.argmax([p_rms_z[-2], p_rms_n[-2], p_rms_e[-2]])
+                    i_chn = np.argmax([p_amprms_z[-2], p_amprms_n[-2], p_amprms_e[-2]])
                     if new_p_nois[i_chn] > 0.4 * old_p_amps[i_chn]:
                         p_picks.pop()
                         p_snrs.pop()
                         p_warning.pop()
-                        p_rms_z.pop()
-                        p_rms_n.pop()
-                        p_rms_e.pop()
+                        p_ampls_z.pop()
+                        p_ampls_n.pop()
+                        p_ampls_e.pop()
+                        p_ampdis_z.pop()
+                        p_ampdis_n.pop()
+                        p_ampdis_e.pop()
+                        p_amprms_z.pop()
+                        p_amprms_n.pop()
+                        p_amprms_e.pop()
                         p_nois_n.pop()
                         p_nois_e.pop()
                         p_nois_z.pop()
@@ -223,12 +240,15 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
     s_ampls_z = []
     s_ampls_n = []
     s_ampls_e = []
+    s_ampdis_z = []
+    s_ampdis_n = []
+    s_ampdis_e = []
     s_nois_z = []
     s_nois_n = []
     s_nois_e = []
-    s_rms_z = []
-    s_rms_n = []
-    s_rms_e = []
+    s_amprms_z = []
+    s_amprms_n = []
+    s_amprms_e = []
     s_warning = []
     sp_ratio = []
     for k in range(len(p_picks)):
@@ -283,34 +303,42 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
                 findz = 0
                 findn = 0
                 finde = 0
-                for tr in st_amp:
+                for tr_i in range(len(st_amp)):
+                    tr = st_amp[tr_i]
+                    tr_disp = st_disp[tr_i]
                     if tr.meta.channel[-1] == 'Z':
                         s_ampls_z.append( np.max(np.abs(tr.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(2/dt_fine)])) )
+                        s_ampdis_z.append( np.max(np.abs(tr_disp.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(15/dt_fine)])) )
                         s_nois_z.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(6/dt_fine): i_start+i_s[j]-int(1/dt_fine)] ** 2)/(5/dt_fine)) )
-                        s_rms_z.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]-int(5/dt_fine)] ** 2)/(5/dt_fine)) )
+                        s_amprms_z.append(  np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]+int(5/dt_fine)] ** 2)/(5/dt_fine)) )
                         findz = 1
                     elif tr.meta.channel[-1] in ['N', '1'] :
                         s_ampls_n.append( np.max(np.abs(tr.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(2/dt_fine)])) )
+                        s_ampdis_n.append( np.max(np.abs(tr_disp.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(15/dt_fine)])) )
                         s_nois_n.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(6/dt_fine): i_start+i_s[j]-int(1/dt_fine)] ** 2)/(5/dt_fine)) )
-                        s_rms_n.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]-int(5/dt_fine)] ** 2)/(5/dt_fine)) )
+                        s_amprms_n.append(  np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]+int(5/dt_fine)] ** 2)/(5/dt_fine)) )
                         findn = 1
                     elif tr.meta.channel[-1] in ['E', '2']:
                         s_ampls_e.append( np.max(np.abs(tr.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(2/dt_fine)])) )
+                        s_ampdis_e.append( np.max(np.abs(tr_disp.data[i_start+i_s[j]-int(1/dt_fine): i_start+i_s[j]+int(15/dt_fine)])) )
                         s_nois_e.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(6/dt_fine): i_start+i_s[j]-int(1/dt_fine)] ** 2)/(5/dt_fine)) )
-                        s_rms_e.append( np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]-int(5/dt_fine)] ** 2)/(5/dt_fine)) )
+                        s_amprms_e.append(  np.sqrt(np.sum(tr.data[i_start+i_s[j]-int(0/dt_fine): i_start+i_s[j]+int(5/dt_fine)] ** 2)/(5/dt_fine)) )
                         finde = 1
                 if not findz:
                     s_ampls_z.append(0)
+                    s_ampdis_z.append(0)
                     s_nois_z.append(0)
-                    s_rms_z.append(0)
+                    s_amprms_z.append(0)
                 if not findn:
                     s_ampls_n.append(0)
+                    s_ampdis_n.append(0)
                     s_nois_n.append(0)
-                    s_rms_n.append(0)
+                    s_amprms_n.append(0)
                 if not finde:
                     s_ampls_e.append(0)
+                    s_ampdis_e.append(0)
                     s_nois_e.append(0)
-                    s_rms_e.append(0)
+                    s_amprms_e.append(0)
 
                 s_warning.append(Empty_warning)
 
@@ -323,10 +351,10 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
 
                 if p_ampls_n[k] == 0 and p_ampls_e[k] == 0:
                     p_amp = p_ampls_z[k]
-                    p_rms = p_rms_z[k]
+                    p_rms = p_amprms_z[k]
                 else:
                     p_amp = max(p_ampls_n[k], p_ampls_e[k])
-                    p_rms = p_rms_n[k] + p_rms_e[k]
+                    p_rms = p_amprms_n[k] + p_amprms_e[k]
                 
                 sp_ratio.append(s_amp/p_amp)
 
@@ -335,18 +363,20 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
                     s_ampls_z.pop()
                     s_ampls_n.pop()
                     s_ampls_e.pop()
+                    s_ampdis_z.pop()
+                    s_ampdis_n.pop()
+                    s_ampdis_e.pop()
                     s_nois_z.pop()
                     s_nois_n.pop()
                     s_nois_e.pop()
-                    s_rms_z.pop()
-                    s_rms_n.pop()
-                    s_rms_e.pop()
+                    s_amprms_z.pop()
+                    s_amprms_n.pop()
+                    s_amprms_e.pop()
                     s_picks.pop()
                     s_snr.pop()
                     s_warning.pop()
                     sp_ratio.pop()
 
-                #sp_ratio.append(s_amp/p_amp)
             
             s_snrs += s_snr
         
@@ -358,11 +388,13 @@ def pick_fine_picks(rough_picks, st_high, st_low, st_amp, threshold_p=3, thresho
 
     return (r_picks, p_picks, s_picks, p_snrs, s_snrs, 
      p_ampls_z, p_ampls_n, p_ampls_e, 
+     p_ampdis_z, p_ampdis_n, p_ampdis_e, 
      p_nois_z, p_nois_n, p_nois_e, 
-     p_rms_z, p_rms_n, p_rms_e, 
+     p_amprms_z, p_amprms_n, p_amprms_e, 
      s_ampls_z, s_ampls_n, s_ampls_e, 
+     s_ampdis_z, s_ampdis_n, s_ampdis_e, 
      s_nois_z, s_nois_n, s_nois_e, 
-     s_rms_z, s_rms_n, s_rms_e, 
+     s_amprms_z, s_amprms_n, s_amprms_e, 
      p_warning, s_warning, sp_ratio)
 
 
@@ -418,14 +450,30 @@ def collapse_phases(picks_df, threshold):
     return collapsed
 
 
-def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3), amp_freq_band=(0.5, 2), wfBaseDir = 'Picks'):
+def round_sig_column(val, sig):
+    if val == 0 or np.isnan(val) or np.isinf(val):
+        return 0
+    else:
+        return round(val, sig - int(np.floor(np.log10(abs(val)))) - 1)
+
+
+def process_one_stream(crr_date, st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3), amp_freq_band=(0.5, 2), wfBaseDir = 'Picks'):
 
     st_high = st.copy()
     st_low = st.copy()
     st_amp = st.copy()
+    st_disp = st.copy()
+    #st_amp.filter('bandpass', freqmin=0.2, freqmax=5, corners=4, zerophase=True)
+    st_disp.integrate(method='cumtrapz')
+    # for tr in st_disp:
+    #     tr.data *= 1000
+    #     tr.stats.units = 'mm'
+    # if st_amp[0].meta.delta < 0.05:
+    #     st_amp.resample(20)
     st_high.filter('bandpass', freqmin=P_freq_band[0], freqmax=P_freq_band[1], corners=4, zerophase=True)
     st_low.filter('bandpass', freqmin=S_freq_band[0], freqmax=S_freq_band[1], corners=4, zerophase=True)
     st_amp.filter('bandpass', freqmin=amp_freq_band[0], freqmax=amp_freq_band[1], corners=4, zerophase=True)
+    st_disp.filter('bandpass', freqmin=amp_freq_band[0], freqmax=amp_freq_band[1], corners=4, zerophase=True)
 
     net = st[0].meta.network
     sta = st[0].meta.station
@@ -435,7 +483,7 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
         snr_rough[i].meta.delta = rough_dt
 
     dt = st[0].meta.delta
-    crr_date = st[0].meta.starttime + 1
+    # crr_date = st[0].meta.starttime + 1
 
     Dir_path = os.path.join(wfBaseDir, "%s/%s/%s/" % (crr_date.year, net, sta))
     if not os.path.exists(Dir_path):
@@ -464,6 +512,7 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
     st_high.trim(earliest, latest, pad=True, fill_value=0)
     st_low.trim(earliest, latest, pad=True, fill_value=0)
     st_amp.trim(earliest, latest, pad=True, fill_value=0)
+    st_disp.trim(earliest, latest, pad=True, fill_value=0)
 
     snr_rough_avg = merge_snr(snr_rough)
 
@@ -471,27 +520,32 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
 
     (r_picks, p_picks, s_picks, p_snrs, s_snrs, 
      p_ampls_z, p_ampls_n, p_ampls_e, 
+     p_ampdis_z, p_ampdis_n, p_ampdis_e, 
      p_nois_z, p_nois_n, p_nois_e, 
-     p_rms_z, p_rms_n, p_rms_e, 
+     p_amprms_z, p_amprms_n, p_amprms_e, 
      s_ampls_z, s_ampls_n, s_ampls_e, 
+     s_ampdis_z, s_ampdis_n, s_ampdis_e, 
      s_nois_z, s_nois_n, s_nois_e, 
-     s_rms_z, s_rms_n, s_rms_e, 
-     p_warning, s_warning, sp_ratio)= pick_fine_picks(rough_picks, st_high, st_low, st_amp, 2.9, 3.0)
+     s_amprms_z, s_amprms_n, s_amprms_e, 
+     p_warning, s_warning, sp_ratio)= pick_fine_picks(rough_picks, st_high, st_low, st_amp, st_disp, 2.9, 3.0)
 
     pick_data = {
         'station':[],
         'phase':[],
         'time':[],
         'snr':[],
+        'ampdis_z':[],
+        'ampdis_n':[],
+        'ampdis_e':[],
         'amp_z':[],
         'amp_n':[],
         'amp_e':[],
-        'nos_z':[],
-        'nos_n':[],
-        'nos_e':[],
         'rms_z':[],
         'rms_n':[],
         'rms_e':[],
+        'nos_z':[],
+        'nos_n':[],
+        'nos_e':[],
         'warning':[],
         'sp_ratio':[]
     }
@@ -500,34 +554,40 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
         pick_data['station'].append(net+'.'+sta)
         pick_data['phase'].append('P')
         pick_data['time'].append((earliest + p_picks[i]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-        pick_data['snr'].append(p_snrs[i])
-        pick_data['amp_z'].append(p_ampls_z[i])
-        pick_data['amp_n'].append(p_ampls_n[i])
-        pick_data['amp_e'].append(p_ampls_e[i])
-        pick_data['nos_z'].append(p_nois_z[i])
-        pick_data['nos_n'].append(p_nois_n[i])
-        pick_data['nos_e'].append(p_nois_e[i])
-        pick_data['rms_z'].append(p_rms_z[i])
-        pick_data['rms_n'].append(p_rms_n[i])
-        pick_data['rms_e'].append(p_rms_e[i])
+        pick_data['snr'].append(float(f"{p_snrs[i]:.{3}g}") )
+        pick_data['amp_z'].append(float(f"{p_ampls_z[i]:.{3}g}") )
+        pick_data['amp_n'].append(float(f"{p_ampls_n[i]:.{3}g}") )
+        pick_data['amp_e'].append(float(f"{p_ampls_e[i]:.{3}g}") )
+        pick_data['ampdis_z'].append(float(f"{p_ampdis_z[i]:.{3}g}") )
+        pick_data['ampdis_n'].append(float(f"{p_ampdis_n[i]:.{3}g}") )
+        pick_data['ampdis_e'].append(float(f"{p_ampdis_e[i]:.{3}g}") )
+        pick_data['nos_z'].append(float(f"{p_nois_z[i]:.{3}g}") )
+        pick_data['nos_n'].append(float(f"{p_nois_n[i]:.{3}g}") )
+        pick_data['nos_e'].append(float(f"{p_nois_e[i]:.{3}g}") )
+        pick_data['rms_z'].append(float(f"{p_amprms_z[i]:.{3}g}") )
+        pick_data['rms_n'].append(float(f"{p_amprms_n[i]:.{3}g}") )
+        pick_data['rms_e'].append(float(f"{p_amprms_e[i]:.{3}g}") )
         pick_data['warning'].append(p_warning[i])
         pick_data['sp_ratio'].append(1)
     for i in range(len(s_picks)):
         pick_data['station'].append(net+'.'+sta)
         pick_data['phase'].append('S')
         pick_data['time'].append((earliest + s_picks[i]).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
-        pick_data['snr'].append(s_snrs[i])
-        pick_data['amp_z'].append(s_ampls_z[i])
-        pick_data['amp_n'].append(s_ampls_n[i])
-        pick_data['amp_e'].append(s_ampls_e[i])
-        pick_data['nos_z'].append(s_nois_z[i])
-        pick_data['nos_n'].append(s_nois_n[i])
-        pick_data['nos_e'].append(s_nois_e[i])
-        pick_data['rms_z'].append(s_rms_z[i])
-        pick_data['rms_n'].append(s_rms_n[i])
-        pick_data['rms_e'].append(s_rms_e[i])
+        pick_data['snr'].append(float(f"{s_snrs[i]:.{3}g}") )
+        pick_data['amp_z'].append(float(f"{s_ampls_z[i]:.{3}g}") )
+        pick_data['amp_n'].append(float(f"{s_ampls_n[i]:.{3}g}") )
+        pick_data['amp_e'].append(float(f"{s_ampls_e[i]:.{3}g}") )
+        pick_data['ampdis_z'].append(float(f"{s_ampdis_z[i]:.{3}g}") )
+        pick_data['ampdis_n'].append(float(f"{s_ampdis_n[i]:.{3}g}") )
+        pick_data['ampdis_e'].append(float(f"{s_ampdis_e[i]:.{3}g}") )
+        pick_data['nos_z'].append(float(f"{s_nois_z[i]:.{3}g}") )
+        pick_data['nos_n'].append(float(f"{s_nois_n[i]:.{3}g}") )
+        pick_data['nos_e'].append(float(f"{s_nois_e[i]:.{3}g}") )
+        pick_data['rms_z'].append(float(f"{s_amprms_z[i]:.{3}g}") )
+        pick_data['rms_n'].append(float(f"{s_amprms_n[i]:.{3}g}") )
+        pick_data['rms_e'].append(float(f"{s_amprms_e[i]:.{3}g}") )
         pick_data['warning'].append(s_warning[i])
-        pick_data['sp_ratio'].append(sp_ratio[i])
+        pick_data['sp_ratio'].append(float(f"{sp_ratio[i]:.{3}g}") )
     # for i in range(len(r_picks)):
     #     pick_data['station'].append(net+'.'+sta)
     #     pick_data['phase'].append('R')
@@ -543,6 +603,12 @@ def process_one_stream(st, rough_dt, P_freq_band = (0.5, 5), S_freq_band=(0.3, 3
     df['snr_z'] = df['amp_z']/df['nos_z']
     df['snr_n'] = df['amp_n']/df['nos_n']
     df['snr_e'] = df['amp_e']/df['nos_e']
+
+
+    df['snr_z'] = df['snr_z'].apply(lambda v: round_sig_column(v, 3))
+    df['snr_n'] = df['snr_n'].apply(lambda v: round_sig_column(v, 3))
+    df['snr_e'] = df['snr_e'].apply(lambda v: round_sig_column(v, 3))
+
     df_p = df[df['phase']=='P'].reset_index(drop=True)
     df_s = df[df['phase']=='S'].reset_index(drop=True)
     df_s = collapse_phases(df_s, 3)

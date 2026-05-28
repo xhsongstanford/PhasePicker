@@ -51,9 +51,9 @@ def process_single_day(curr_date, SaveDir):
 
 
             if net == 'AM':
-                process_one_stream(stream, 1, (1, 10), (1, 10), (0.5, 2), wfBaseDir= SaveDir)
+                process_one_stream(curr_date, stream, 1, (1, 10), (1, 10), (0.5, 2), wfBaseDir= SaveDir)
             else:
-                process_one_stream(stream, 1, (0.5, 5), (0.3, 5), (0.5, 2), wfBaseDir= SaveDir)
+                process_one_stream(curr_date, stream, 1, (0.5, 5), (0.3, 5), (0.5, 2), wfBaseDir= SaveDir)
     
     # curr_date += 24*3600
     return
